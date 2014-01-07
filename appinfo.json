@@ -1,0 +1,47 @@
+{
+    "versionLabel": "1.0.0",
+    "uuid": "18494A8C-4361-4B38-8DC0-08649C6467E6",
+    "appKeys": {
+        "dummy": 0
+    },
+    "longName": "Maurice Extra",
+    "versionCode": 1,
+    "capabilities": [
+        ""
+    ],
+    "shortName": "Maurice Extra",
+    "companyName": "Zalew/Fowler",
+    "watchapp": {
+        "watchface": true
+    },
+    "resources": {
+        "media": [
+            {
+                "type": "png",
+                "name": "BLUETOOTH",
+                "file": "images/bluetooth.png"
+            },
+            {
+                "type": "png",
+                "name": "BATTERY_CHARGE",
+                "file": "images/battery-charge.png"
+            },
+            {
+                "type": "png",
+                "name": "BATTERY_ICON",
+                "file": "images/battery_icon.png"
+            },
+            {
+                "menuIcon": true,
+                "type": "png",
+                "name": "IMAGE_MENU_ICON",
+                "file": "images/maurice_logo.png"
+            },
+            {
+                "type": "png",
+                "name": "IMAGE_BACKGROUND",
+                "file": "images/maurice_background.png"
+            }
+        ]
+    }
+}
