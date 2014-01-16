@@ -13,7 +13,7 @@ static Layer *second_display_layer;
 static TextLayer *date_layer;
 
 static char date_text[] = "Wed 13 ";
-static bool bt_ok = false;
+static uint8_t bt_ok = 0;
 static uint8_t battery_level;
 static bool battery_plugged;
 
@@ -218,33 +218,33 @@ void battery_layer_update_callback(Layer *layer, GContext *ctx) {
 
 	graphics_context_set_compositing_mode(ctx, GCompOpAssign);
 
-	if (!battery_plugged) {
+	if (battery_plugged) {
+		graphics_draw_bitmap_in_rect(ctx, icon_battery_charge, GRect(0, 0, 24, 12));
+	} else if (battery_level < 20) {
 		graphics_draw_bitmap_in_rect(ctx, icon_battery, GRect(0, 0, 24, 12));
 		graphics_context_set_stroke_color(ctx, GColorBlack);
 		graphics_context_set_fill_color(ctx, GColorWhite);
 		graphics_fill_rect(ctx, GRect(7, 4, (uint8_t)((battery_level / 100.0) * 11.0), 4), 0, GCornerNone);
 	} else {
-		graphics_draw_bitmap_in_rect(ctx, icon_battery_charge, GRect(0, 0, 24, 12));
+		graphics_context_set_compositing_mode(ctx, GCompOpClear);
+		graphics_fill_rect(ctx, GRect(0,0,24,12), 0, GCornerNone);
 	}
 }
 
-
-
 void battery_state_handler(BatteryChargeState charge) {
+	if (!charge.is_plugged && charge.charge_percent <= 20 && battery_level > 20)
+		vibes_short_pulse();
+
 	battery_level = charge.charge_percent;
 	battery_plugged = charge.is_plugged;
 	layer_mark_dirty(battery_layer);
-	if (!battery_plugged && battery_level < 20)
-		conserve_power(true);
-	else
-		conserve_power(false);
 }
 
 /*
  * Bluetooth icon callback handler
  */
 void bt_layer_update_callback(Layer *layer, GContext *ctx) {
-	if (bt_ok)
+	if (bt_ok == 1)
 		graphics_context_set_compositing_mode(ctx, GCompOpAssign);
 	else
 		graphics_context_set_compositing_mode(ctx, GCompOpClear);
@@ -252,9 +252,22 @@ void bt_layer_update_callback(Layer *layer, GContext *ctx) {
 }
 
 void bt_connection_handler(bool connected) {
-	if (!connected && bt_ok)
+	if (!connected && bt_ok == 0) {
 		vibes_short_pulse();
-	bt_ok = connected;
+		bt_ok = 1;
+	} else if (connected && bt_ok != 0) {
+		bt_ok = 0;
+	}
+	layer_mark_dirty(bt_layer);
+}
+
+void bt_flash() {
+	if (bt_ok == 0)
+		return;
+	if (bt_ok == 1)
+		bt_ok = 2;
+	else
+		bt_ok = 1;
 	layer_mark_dirty(bt_layer);
 }
 
@@ -300,7 +313,7 @@ void init() {
 	layer_set_update_proc(battery_layer, &battery_layer_update_callback);
 	layer_add_child(window_layer, battery_layer);
 
-	bt_ok = bluetooth_connection_service_peek();
+	bt_ok = bluetooth_connection_service_peek() ? 0 : 1;
 	bt_layer = layer_create(GRect(83,56,9,12)); //9*12
 	layer_set_update_proc(bt_layer, &bt_layer_update_callback);
 	layer_add_child(window_layer, bt_layer);
@@ -383,24 +396,9 @@ void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
 
 		layer_mark_dirty(second_display_layer);
 	}
+
+	bt_flash();
 }
-
-void conserve_power(bool conserve) {
-	if (conserve == g_conserve)
-		return;
-	g_conserve = conserve;
-	if (conserve) {
-		tick_timer_service_unsubscribe();
-		tick_timer_service_subscribe(MINUTE_UNIT, &handle_tick);
-		layer_set_hidden(second_display_layer, true);
-	} else {
-		tick_timer_service_unsubscribe();
-		tick_timer_service_subscribe(SECOND_UNIT, &handle_tick);
-		layer_set_hidden(second_display_layer, false);
-	}
-}
-
-
 
 /*
  * Main - or main as it is known
